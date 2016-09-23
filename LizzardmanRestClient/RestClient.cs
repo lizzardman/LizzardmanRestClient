@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -21,16 +22,17 @@ namespace LizzardmanRestClient
             _handler = handler;
         }
 
-        public async Task<HttpResponseMessage> RequestAsync(HttpMethod method, string url, Dictionary<string, string> data, CancellationToken token)
+
+        public async Task<HttpResponseMessage> RequestAsync(HttpMethod method, string url, HttpContent content, CancellationToken token)
         {
             using (HttpMessageHandler handler = _handler)
             using (var httpclient = new HttpClient(handler))
             {
                 var request = new HttpRequestMessage(method, url);
 
-                if (data != null && (method == HttpMethod.Post || method == HttpMethod.Put))
+                if (content != null && (method == HttpMethod.Post || method == HttpMethod.Put))
                 {
-                    request.Content = new FormUrlEncodedContent(data);
+                    request.Content = content;
                 }
 
                 HttpResponseMessage response = null;
@@ -68,19 +70,41 @@ namespace LizzardmanRestClient
             }
         }
 
+        public async Task<HttpResponseMessage> RequestJsonAsync(HttpMethod method, string url, object data, CancellationToken token)
+        {
+            var content = new StringContent(Newtonsoft.Json.JsonConvert.SerializeObject(data), Encoding.UTF8, "application/json");
+            return await RequestAsync(method, url, content, token);
+        }
+
+        public async Task<HttpResponseMessage> RequestFormAsync(HttpMethod method, string url, Dictionary<string, string> data, CancellationToken token)
+        {
+            var content = new FormUrlEncodedContent(data);
+            return await RequestAsync(method, url, content, token);
+        }
+
         public async Task<HttpResponseMessage> GetAsync(string url, CancellationToken token)
         {
-            return await RequestAsync(HttpMethod.Get, url, null, token);
+            return await RequestFormAsync(HttpMethod.Get, url, null, token);
         }
 
         public async Task<HttpResponseMessage> PostAsync(string url, Dictionary<string, string> data, CancellationToken token)
         {
-            return await RequestAsync(HttpMethod.Post, url, data, token);
+            return await RequestFormAsync(HttpMethod.Post, url, data, token);
         }
 
         public async Task<HttpResponseMessage> PutAsync(string url, Dictionary<string, string> data, CancellationToken token)
         {
-            return await RequestAsync(HttpMethod.Put, url, data, token);
+            return await RequestFormAsync(HttpMethod.Put, url, data, token);
+        }
+
+        public async Task<HttpResponseMessage> PostJsonAsync(string url, object data, CancellationToken token)
+        {
+            return await RequestJsonAsync(HttpMethod.Post, url, data, token);
+        }
+
+        public async Task<HttpResponseMessage> PutJsonAsync(string url, object data, CancellationToken token)
+        {
+            return await RequestJsonAsync(HttpMethod.Put, url, data, token);
         }
 
         public async Task<T> GetAsync<T>(string url, CancellationToken token)
